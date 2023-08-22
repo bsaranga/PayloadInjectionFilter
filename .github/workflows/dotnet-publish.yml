@@ -27,3 +27,6 @@ jobs:
     - name: Pack
       run: dotnet pack -o . -c Release
       working-directory: ./PayloadInjectionFilter
+    - name: Publish
+      run: dotnet nuget push *.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      working-directory: ./PayloadInjectionFilter
