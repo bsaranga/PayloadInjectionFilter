@@ -12,10 +12,14 @@
 	<Description>
 		A reusable payload injection filter for ASP.NET Core. This can be used to short-circuit a request if it contains any malicious content as specified via a regex pattern.
 	</Description>
+	<PackageReadmeFile>ReadMe.md</PackageReadmeFile>
+	<PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
 	  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+	  <None Include="ReadMe.md" Pack="true" PackagePath=""/>
+	  <None Include="LICENSE" Pack="true" PackagePath=""/>
   </ItemGroup>
 
 </Project>
