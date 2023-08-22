@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PayloadInjectionFilter", "PayloadInjectionFilter\PayloadInjectionFilter.csproj", "{7351866B-C6D7-4002-9495-7152934C6032}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PayloadInjectionFilter_Tests", "PayloadInjectionFilter_Tests\PayloadInjectionFilter_Tests.csproj", "{AF641534-EB22-41EC-9B6B-79164CB97E53}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7351866B-C6D7-4002-9495-7152934C6032}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7351866B-C6D7-4002-9495-7152934C6032}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7351866B-C6D7-4002-9495-7152934C6032}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7351866B-C6D7-4002-9495-7152934C6032}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
