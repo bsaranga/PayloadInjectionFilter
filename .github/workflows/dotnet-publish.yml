@@ -24,5 +24,6 @@ jobs:
       run: dotnet restore
     - name: Build
       run: dotnet build --no-restore --configuration Release
-    - name: Publish NuGet package
-      run: dotnet nuget push ./bin/Release/net6.0/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }}
+    - name: Pack
+      run: dotnet pack -o . -c Release
+      working-directory: ./PayloadInjectionFilter
