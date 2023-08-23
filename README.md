@@ -26,7 +26,7 @@ public void ConfigureServices(IServiceCollection services)
 }
 ```
 
-By default, the filter will short-circuit the request and return a response with HTTP Status 400, and a plain text message saying, 'Request short-circuited due to malicious content.'. This can be overridden as shown below,
+By default, the filter will short-circuit the request and return a response with HTTP Status 400, and a plain text message saying, `Request short-circuited due to malicious content.`. This can be overridden as shown below,
 
 ```csharp
 public void ConfigureServices(IServiceCollection services)
