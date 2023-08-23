@@ -4,8 +4,6 @@
 name: Nuget Package Publish Workflow
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
