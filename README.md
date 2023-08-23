@@ -3,3 +3,23 @@ A reusable payload injection filter for ASP.NET Core. This can be used to short-
 
 [![Build/Test Workflow](https://github.com/bsaranga/PayloadInjectionFilter/actions/workflows/dotnet-build.yml/badge.svg)](https://github.com/bsaranga/PayloadInjectionFilter/actions/workflows/dotnet-build.yml)
 [![Nuget Package Publish Workflow](https://github.com/bsaranga/PayloadInjectionFilter/actions/workflows/dotnet-publish.yml/badge.svg)](https://github.com/bsaranga/PayloadInjectionFilter/actions/workflows/dotnet-publish.yml)
+
+## Usage
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddControllers()
+            .AddPayloadInjectionFilter(cfg =>
+            {
+                cfg.AllowedHttpMethods = new List<HttpMethod> 
+                {
+                    HttpMethod.Post,
+                    HttpMethod.Put,
+                    HttpMethod.Patch,
+                };
+
+                cfg.Pattern = new Regex(@"[<>\&;]");
+            });
+}
+```
