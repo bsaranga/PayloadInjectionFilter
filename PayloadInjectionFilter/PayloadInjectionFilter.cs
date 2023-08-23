@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
+using System.Collections;
 
 namespace PayloadInjectionFilter_NS
 {
@@ -73,25 +74,13 @@ namespace PayloadInjectionFilter_NS
                             }
                         }
 
-                        if (!argumentType.IsValueType() && !argumentType.IsString())
+                        if (argumentType.IsEnumerable())
                         {
-                            properties = argumentType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                        }
-
-                        if (properties.Any())
-                        {
-                            foreach (var prop in properties)
+                            foreach (var listItem in item as IEnumerable)
                             {
-                                if (prop.IsString())
-                                {
-                                    if (DetectDisallowedChars(prop.GetValue(item) as string, options.Value.Pattern!))
-                                    {
-                                        context.ShortCircuit(options.Value.ResponseContentBody!, options.Value.ResponseStatusCode, options.Value.ResponseContentType!);
-                                        ShortCircuited = true;
-                                    }
-                                }
+                                Evaluate(listItem.GetType(), listItem, context);
                             }
-                        }
+                        } else Evaluate(argumentType, item, context);
                     }
                 }
             }
@@ -99,6 +88,31 @@ namespace PayloadInjectionFilter_NS
             {
                 logger.LogError(ex, ex.Message);
                 throw;
+            }
+        }
+
+        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context)
+        {
+            IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
+
+            if (!incomingType.IsValueType() && !incomingType.IsString())
+            {
+                properties = incomingType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            }
+
+            if (properties.Any())
+            {
+                foreach (var prop in properties)
+                {
+                    if (prop.IsString())
+                    {
+                        if (DetectDisallowedChars(prop.GetValue(incomingItem) as string, options.Value.Pattern!))
+                        {
+                            context.ShortCircuit(options.Value.ResponseContentBody!, options.Value.ResponseStatusCode, options.Value.ResponseContentType!);
+                            ShortCircuited = true;
+                        }
+                    }
+                }
             }
         }
 
@@ -125,6 +139,11 @@ namespace PayloadInjectionFilter_NS
         internal static bool IsValueType(this Type objectType)
         {
             return objectType.BaseType!.Name == "ValueType" && objectType.BaseType.FullName == "System.ValueType";
+        }
+
+        internal static bool IsEnumerable(this Type objectType)
+        {
+            return typeof(IEnumerable).IsAssignableFrom(objectType);
         }
 
         internal static void ShortCircuit(this ActionExecutingContext context, string contentBody, int statusCode, string contentType)

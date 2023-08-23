@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	<PackageId>Zone24x7.PayloadInjectionFilter</PackageId>
-	<Version>0.0.4</Version>
+	<Version>0.0.5</Version>
 	<Authors>Buwaneka Saranga</Authors>
 	<Company>Zone24x7 Inc.</Company>
 	<Product>PayloadInjectionFilter For ASPNET Core</Product>
