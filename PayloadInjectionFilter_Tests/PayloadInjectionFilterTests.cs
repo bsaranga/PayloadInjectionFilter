@@ -202,7 +202,6 @@ namespace PayloadInjectionFilter_Tests
                 WhiteListEntries = new List<WhiteListEntry> { 
                     new WhiteListEntry 
                     {
-                        ControllerName = "Service",
                         PathTemplate = "appointmentSettings/{id}",
                         ParameterName = "legitimateRichText",
                         PropertyNames = new List<string>
@@ -260,7 +259,6 @@ namespace PayloadInjectionFilter_Tests
                 WhiteListEntries = new List<WhiteListEntry> {
                     new WhiteListEntry
                     {
-                        ControllerName = "Service",
                         PathTemplate = "appointmentSettings/{id}",
                         ParameterName = "legitimateRichText",
                         PropertyNames = new List<string>

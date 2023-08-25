@@ -17,6 +17,11 @@ namespace PayloadInjectionFilter_NS
     /// </summary>
     public class PayloadInjectionFilter : IActionFilter
     {
+        public static readonly string DEFAULT_CONTENT_BODY = "Request short-circuited due to malicious content.";
+        public static readonly int DEFAULT_STATUS_CODE = 400;
+        public static readonly string DEFAULT_CONTENT_TYPE = "text";
+        public static readonly Regex DEFAULT_FILTER_PATTERN = new Regex(@"[<>\&;]");
+
         private readonly ILogger<PayloadInjectionFilter> logger;
         private readonly IOptions<PayloadInjectionOptions> options;
 
@@ -56,12 +61,19 @@ namespace PayloadInjectionFilter_NS
         {
             try
             {
-                string controllerName = ((ControllerActionDescriptor)context.ActionDescriptor).ControllerName;
-                string? pathTemplate = context.ActionDescriptor.AttributeRouteInfo?.Template;
-                
-                bool? controllerMatch = options.Value.WhiteListEntries?.Select(w => w.ControllerName).Contains(controllerName);
-                bool? templateMatch = options.Value.WhiteListEntries?.Select(w => w.PathTemplate).Contains(pathTemplate);
-                int? whiteListIndex = (controllerMatch.HasValue && controllerMatch.Value) ? options.Value.WhiteListEntries?.Select(w => w.ControllerName).ToList().IndexOf(controllerName) : null;
+                string pathTemplate;
+                int whiteListIndex = -1;
+                bool templateMatch = false;
+                bool parameterMatch = false;
+                bool whiteListInitialCondition = false;
+                bool hasWhiteListedEntries = options.Value.WhiteListEntries != null;
+
+                if (hasWhiteListedEntries)
+                {
+                    pathTemplate = context.ActionDescriptor.AttributeRouteInfo.Template;
+                    templateMatch = options.Value.WhiteListEntries.Select(w => w.PathTemplate).Contains(pathTemplate);
+                    whiteListIndex = (templateMatch) ? options.Value.WhiteListEntries.Select(w => w.PathTemplate).ToList().IndexOf(pathTemplate) : -1;
+                }
 
                 if (context.IsOneOfAllowedHttpMethods(options.Value.AllowedHttpMethods!.Select(x => x.ToString()).Distinct().ToArray()))
                 {
@@ -71,14 +83,17 @@ namespace PayloadInjectionFilter_NS
 
                     foreach (var item in context.ActionArguments)
                     {
-                        bool? parameterMatch = whiteListIndex.HasValue ? options.Value.WhiteListEntries?[whiteListIndex.Value].ParameterName?.Equals(item.Key) : null;
-                        var whiteListInitialCondition = ((parameterMatch.HasValue && templateMatch.HasValue && controllerMatch.HasValue) && parameterMatch.Value && templateMatch.Value && controllerMatch.Value);
+                        if (hasWhiteListedEntries && whiteListIndex != -1)
+                        {
+                            parameterMatch = options.Value.WhiteListEntries[whiteListIndex].ParameterName.Equals(item.Key);
+                            whiteListInitialCondition = parameterMatch && templateMatch;
+                        }
                         
                         var argumentType = item.Value!.GetType();
 
                         if (argumentType.IsString())
                         {
-                            if (DetectDisallowedChars(item.Value as string, options.Value.Pattern!))
+                            if (DetectDisallowedChars(item.Value as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
                             {
                                 ShortCircuit(context);
                             }
@@ -102,9 +117,10 @@ namespace PayloadInjectionFilter_NS
             }
         }
 
-        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context, int? whiteListIndex, bool? initialWhiteListCondition)
+        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context, int whiteListIndex, bool initialWhiteListCondition)
         {
             IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
+            bool isWhiteListedProperty = false;
 
             if (!incomingType.IsValueType() && !incomingType.IsString())
             {
@@ -115,11 +131,11 @@ namespace PayloadInjectionFilter_NS
             {
                 foreach (var prop in properties)
                 {
-                    var whiteListedProperty = whiteListIndex.HasValue ? options.Value.WhiteListEntries?[whiteListIndex.Value].PropertyNames?.Contains(prop.Name) : null;
+                    isWhiteListedProperty = whiteListIndex != -1 ? options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name) : false;
 
-                    if (prop.IsString() && !(initialWhiteListCondition.HasValue && whiteListedProperty.HasValue && initialWhiteListCondition.Value && whiteListedProperty.Value))
+                    if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
                     {
-                        if (DetectDisallowedChars(prop.GetValue(incomingItem) as string, options.Value.Pattern!))
+                        if (DetectDisallowedChars(prop.GetValue(incomingItem) as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
                         {
                             ShortCircuit(context);
                         }
@@ -141,9 +157,9 @@ namespace PayloadInjectionFilter_NS
             context.ModelState.AddModelError("__shortcircuit__", "Malicious content");
             context.Result = new ContentResult
             {
-                Content = options.Value.ResponseContentBody,
-                StatusCode = options.Value.ResponseStatusCode,
-                ContentType = options.Value.ResponseContentType
+                Content = options.Value.ResponseContentBody ?? DEFAULT_CONTENT_BODY,
+                StatusCode = options.Value.ResponseStatusCode == 0 ? DEFAULT_STATUS_CODE : options.Value.ResponseStatusCode,
+                ContentType = options.Value.ResponseContentType ?? DEFAULT_CONTENT_TYPE
             };
         }
     }
