@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using System.Collections;
+using Microsoft.AspNetCore.Mvc.Controllers;
 
 namespace PayloadInjectionFilter_NS
 {
@@ -55,32 +56,42 @@ namespace PayloadInjectionFilter_NS
         {
             try
             {
+                string controllerName = ((ControllerActionDescriptor)context.ActionDescriptor).ControllerName;
+                string? pathTemplate = context.ActionDescriptor.AttributeRouteInfo?.Template;
+                
+                bool? controllerMatch = options.Value.WhiteListEntries?.Select(w => w.ControllerName).Contains(controllerName);
+                bool? templateMatch = options.Value.WhiteListEntries?.Select(w => w.PathTemplate).Contains(pathTemplate);
+                int? whiteListIndex = (controllerMatch.HasValue && controllerMatch.Value) ? options.Value.WhiteListEntries?.Select(w => w.ControllerName).ToList().IndexOf(controllerName) : null;
+
                 if (context.IsOneOfAllowedHttpMethods(options.Value.AllowedHttpMethods!.Select(x => x.ToString()).Distinct().ToArray()))
                 {
                     FilterExecuted = true;
 
                     IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
 
-                    foreach (var item in context.ActionArguments.Values)
+                    foreach (var item in context.ActionArguments)
                     {
-                        var argumentType = item!.GetType();
+                        bool? parameterMatch = whiteListIndex.HasValue ? options.Value.WhiteListEntries?[whiteListIndex.Value].ParameterName?.Equals(item.Key) : null;
+                        var whiteListInitialCondition = ((parameterMatch.HasValue && templateMatch.HasValue && controllerMatch.HasValue) && parameterMatch.Value && templateMatch.Value && controllerMatch.Value);
+                        
+                        var argumentType = item.Value!.GetType();
 
                         if (argumentType.IsString())
                         {
-                            if (DetectDisallowedChars(item as string, options.Value.Pattern!))
+                            if (DetectDisallowedChars(item.Value as string, options.Value.Pattern!))
                             {
-                                context.ShortCircuit(options.Value.ResponseContentBody!, options.Value.ResponseStatusCode, options.Value.ResponseContentType!);
-                                ShortCircuited = true;
+                                ShortCircuit(context);
                             }
                         }
 
                         if (argumentType.IsEnumerable())
                         {
-                            foreach (var listItem in item as IEnumerable)
+                            foreach (var listItem in (item.Value as IEnumerable)!)
                             {
-                                Evaluate(listItem.GetType(), listItem, context);
+                                Evaluate(listItem.GetType(), listItem, context, whiteListIndex, whiteListInitialCondition);
                             }
-                        } else Evaluate(argumentType, item, context);
+                        }
+                        else Evaluate(argumentType, item.Value, context, whiteListIndex, whiteListInitialCondition);
                     }
                 }
             }
@@ -91,7 +102,7 @@ namespace PayloadInjectionFilter_NS
             }
         }
 
-        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context)
+        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context, int? whiteListIndex, bool? initialWhiteListCondition)
         {
             IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
 
@@ -104,23 +115,36 @@ namespace PayloadInjectionFilter_NS
             {
                 foreach (var prop in properties)
                 {
-                    if (prop.IsString())
+                    var whiteListedProperty = whiteListIndex.HasValue ? options.Value.WhiteListEntries?[whiteListIndex.Value].PropertyNames?.Contains(prop.Name) : null;
+
+                    if (prop.IsString() && !(initialWhiteListCondition.HasValue && whiteListedProperty.HasValue && initialWhiteListCondition.Value && whiteListedProperty.Value))
                     {
                         if (DetectDisallowedChars(prop.GetValue(incomingItem) as string, options.Value.Pattern!))
                         {
-                            context.ShortCircuit(options.Value.ResponseContentBody!, options.Value.ResponseStatusCode, options.Value.ResponseContentType!);
-                            ShortCircuited = true;
+                            ShortCircuit(context);
                         }
                     }
                 }
             }
         }
 
-        private static bool DetectDisallowedChars(string? input, Regex disallowedPattern)
+        private bool DetectDisallowedChars(string? input, Regex disallowedPattern)
         {
             if (string.IsNullOrEmpty(input)) return false;
             
             return disallowedPattern.IsMatch(input);
+        }
+
+        private void ShortCircuit(ActionExecutingContext context)
+        {
+            ShortCircuited = true;
+            context.ModelState.AddModelError("__shortcircuit__", "Malicious content");
+            context.Result = new ContentResult
+            {
+                Content = options.Value.ResponseContentBody,
+                StatusCode = options.Value.ResponseStatusCode,
+                ContentType = options.Value.ResponseContentType
+            };
         }
     }
 
@@ -144,17 +168,6 @@ namespace PayloadInjectionFilter_NS
         internal static bool IsEnumerable(this Type objectType)
         {
             return typeof(IEnumerable).IsAssignableFrom(objectType);
-        }
-
-        internal static void ShortCircuit(this ActionExecutingContext context, string contentBody, int statusCode, string contentType)
-        {
-            context.ModelState.AddModelError("__shortcircuit__", "Malicious content");
-            context.Result = new ContentResult
-            {
-                Content = string.IsNullOrEmpty(contentBody) ? "Request short-circuited due to malicious content." : contentBody,
-                StatusCode = statusCode == 0 ? 400 : statusCode,
-                ContentType = string.IsNullOrEmpty(contentType) ? "text" : contentType
-            };
         }
 
         internal static bool IsOneOfAllowedHttpMethods(this ActionExecutingContext context, params string[] HttpMethods)

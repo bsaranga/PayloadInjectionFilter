@@ -1,6 +1,6 @@
 ﻿namespace PayloadInjectionFilter_Tests.CustomTypes
 {
-    internal class UserBasicSetting
+    internal class UserSettings
     {
         public int UserId { get; set; }
         public string? UserCode { get; set; }
