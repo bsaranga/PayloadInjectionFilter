@@ -3,9 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
 	<PackageId>Zone24x7.PayloadInjectionFilter</PackageId>
-	<Version>0.0.5</Version>
+	<Version>0.0.6</Version>
 	<Authors>Buwaneka Saranga</Authors>
 	<Company>Zone24x7 Inc.</Company>
 	<Product>PayloadInjectionFilter For ASPNET Core</Product>
@@ -21,8 +20,8 @@
 
   <ItemGroup>
 	  <FrameworkReference Include="Microsoft.AspNetCore.App" />
-	  <None Include="ReadMe.md" Pack="true" PackagePath=""/>
-	  <None Include="LICENSE" Pack="true" PackagePath=""/>
+	  <None Include="ReadMe.md" Pack="true" PackagePath="" />
+	  <None Include="LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

@@ -20,6 +20,25 @@ namespace PayloadInjectionFilter_NS
                 options.Filters.Add<PayloadInjectionFilter>();
             });
 
+            if (configurations == null)
+            {
+                configurations = (f) =>
+                {
+                    f.AllowedHttpMethods = new List<HttpMethod>
+                    {
+                        HttpMethod.Post,
+                        HttpMethod.Put,
+                        HttpMethod.Patch,
+                    };
+
+                    f.ResponseContentBody = PayloadInjectionFilter.DEFAULT_CONTENT_BODY;
+                    f.ResponseContentType = PayloadInjectionFilter.DEFAULT_CONTENT_TYPE;
+                    f.ResponseStatusCode = PayloadInjectionFilter.DEFAULT_STATUS_CODE;
+
+                    f.Pattern = PayloadInjectionFilter.DEFAULT_FILTER_PATTERN;
+                };
+            }
+
             builder.Services.Configure<PayloadInjectionOptions>(configurations);
 
             return builder;

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
@@ -10,6 +9,8 @@ using Moq;
 using System.Text.RegularExpressions;
 using PayloadInjectionFilter_NS;
 using PayloadInjectionFilter_Tests.CustomTypes;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace PayloadInjectionFilter_Tests
 {
@@ -32,7 +33,12 @@ namespace PayloadInjectionFilter_Tests
             var defaultHttpContext = new DefaultHttpContext();
             defaultHttpContext.Request.Method = HttpMethod.Get.Method;
 
-            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), new ActionDescriptor(), new ModelStateDictionary());
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
             var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), new Dictionary<string, object>(), null);
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
@@ -66,7 +72,12 @@ namespace PayloadInjectionFilter_Tests
                 }
             };
 
-            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), new ActionDescriptor(), new ModelStateDictionary());
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
             var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousQueryParameters, null);
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
@@ -101,7 +112,7 @@ namespace PayloadInjectionFilter_Tests
                 },
                 {
                     "userBasicSettings",
-                    new UserBasicSetting
+                    new UserSettings
                     {
                         UserId = 1,
                         UserCode = "Xlm001",
@@ -110,7 +121,12 @@ namespace PayloadInjectionFilter_Tests
                 }
             };
 
-            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), new ActionDescriptor(), new ModelStateDictionary());
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
             var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
@@ -139,37 +155,162 @@ namespace PayloadInjectionFilter_Tests
             {
                 {
                     "checkListReorder",
-                    new List<Checklist>
+                    new List<ListItem>
                     {
-                        new Checklist
+                        new ListItem
                         {
-                            SortValue = 1,
                             ChecklistItem = "NIC",
                             LinkName = "NIC DISP",
                             Link = "<script></script>",
-                            ChecklistId = 2,
                             ServiceId = 24,
                         },
-                        new Checklist
+                        new ListItem
                         {
-                            SortValue = 2,
                             ChecklistItem = "Passport",
                             LinkName = "Passport DISP",
                             Link = "",
-                            ChecklistId = 1,
                             ServiceId = 24,
                         }
                     }
                 }
             };
 
-            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), new ActionDescriptor(), new ModelStateDictionary());
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
             var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
             Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
             Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(true));
+        }
+
+        [Test]
+        public void Should_Pass_Through_Whitelisted_Fields()
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]"),
+                WhiteListEntries = new List<WhiteListEntry> { 
+                    new WhiteListEntry 
+                    {
+                        PathTemplate = "appointmentSettings/{id}",
+                        ParameterName = "legitimateRichText",
+                        PropertyNames = new List<string>
+                        {
+                            nameof(LegitimateRichText.AllowedRichText)
+                        }
+                    }
+                }
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = "PUT";
+
+            var legitimateBody = new Dictionary<string, object>
+            {
+                {
+                    "legitimateRichText",
+                    new LegitimateRichText
+                    {
+                        ModelId = 1,
+                        AllowedRichText = "<p><strong>Hello World</strong></p>\n\n<ol>\n\t<li><strong>this is a listed item</strong></li>\n\t<li><em>this is a listed item in italics</em></li>\n\t<li><s>this is a strike through item</s></li>\n</ol>\n\n<blockquote>\n<p>THIS IS Quoted text</p>\n</blockquote>\n"
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service",
+                AttributeRouteInfo = new AttributeRouteInfo
+                {
+                    Template = "appointmentSettings/{id}"
+                }
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), legitimateBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(false));
+        }
+
+        [Test]
+        public void Should_Pass_Through_Whitelisted_Fields_In_A_List_Type()
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]"),
+                WhiteListEntries = new List<WhiteListEntry> {
+                    new WhiteListEntry
+                    {
+                        PathTemplate = "appointmentSettings/{id}",
+                        ParameterName = "legitimateRichText",
+                        PropertyNames = new List<string>
+                        {
+                            nameof(LegitimateRichText.AllowedRichText)
+                        }
+                    }
+                }
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = "PUT";
+
+            var legitimateBody = new Dictionary<string, object>
+            {
+                {
+                    "legitimateRichText",
+                    new List<LegitimateRichText>
+                    {
+                        new LegitimateRichText
+                        {
+                            ModelId = 1,
+                            MoreText = "this is legitimate",
+                            AllowedRichText = "Hello world..."
+                        },
+                        new LegitimateRichText
+                        {
+                            ModelId = 2,
+                            MoreText = "this is legitimate",
+                            AllowedRichText = "<p><strong>Hello World</strong></p>\n\n<ol>\n\t<li><strong>this is a listed item</strong></li>\n\t<li><em>this is a listed item in italics</em></li>\n\t<li><s>this is a strike through item</s></li>\n</ol>\n\n<blockquote>\n<p>THIS IS Quoted text</p>\n</blockquote>\n"
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service",
+                AttributeRouteInfo = new AttributeRouteInfo
+                {
+                    Template = "appointmentSettings/{id}"
+                }
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), legitimateBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(false));
         }
     }
 }
