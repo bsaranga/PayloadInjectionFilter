@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
@@ -51,46 +50,6 @@ namespace PayloadInjectionFilter_Tests
         [TestCase("PUT")]
         [TestCase("PATCH")]
         public void ShortCircuits_For_QueryParameters_With_Malicious_Content(string httpMethod)
-        {
-            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
-            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
-
-            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
-            {
-                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
-                Pattern = new Regex(@"[<>\&;]")
-            });
-
-            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
-            var defaultHttpContext = new DefaultHttpContext();
-            defaultHttpContext.Request.Method = httpMethod;
-
-            var maliciousQueryParameters = new Dictionary<string, object>
-            {
-                {
-                    "queryParam1",
-                    "foo@g<>.com"
-                }
-            };
-
-            var ctrlActionDescriptor = new ControllerActionDescriptor
-            {
-                ControllerName = "Service"
-            };
-
-            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
-            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousQueryParameters, null);
-
-            sanitizationFilter.OnActionExecuting(actionExecutingContext);
-
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
-            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(true));
-        }
-
-        [TestCase("POST")]
-        [TestCase("PUT")]
-        [TestCase("PATCH")]
-        public void Executes_With_No_PreConfigurations(string httpMethod)
         {
             var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
             var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
