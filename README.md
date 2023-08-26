@@ -53,3 +53,20 @@ public void ConfigureServices(IServiceCollection services)
             });
 }
 ```
+
+Further more, selected properties in the models bound selected API endpoints can be ignored by specification.
+
+```csharp
+                cfg.WhiteListEntries = new List<WhiteListEntry>
+                {
+                    new WhiteListEntry
+                    {
+                        PathTemplate = "api/Services/appointmentSettings/{id}",
+                        ParameterName = "appointmentSetting",
+                        PropertyNames = new List<string>
+                        {
+                            nameof(ServiceAppointmentSetting.AdditoinalInformation)
+                        }
+                    }
+                };
+```
