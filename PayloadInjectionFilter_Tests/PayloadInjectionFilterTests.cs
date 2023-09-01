@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System.Text.RegularExpressions;
-using PayloadInjectionFilter_NS;
 using PayloadInjectionFilter_Tests.CustomTypes;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Zone24x7PayloadExtensionFilter;
 
 namespace PayloadInjectionFilter_Tests
 {
@@ -311,6 +311,53 @@ namespace PayloadInjectionFilter_Tests
 
             Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
             Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(false));
+        }
+
+        [TestCase("PUT")]
+        public void ShortCircuits_For_Nested_Lists_In_Payload(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "nestedLists",
+                    new RecursiveType
+                    {
+                        Text1 = "Hello1",
+                        Text2 = "Hello2",
+                        Nested = new RecursiveType
+                        {
+                            Text1 = "<Hello/>",
+                            Text2 = "Hello World"
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(true));
         }
     }
 }
