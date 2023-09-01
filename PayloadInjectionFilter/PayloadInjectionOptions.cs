@@ -37,6 +37,12 @@ namespace Zone24x7PayloadExtensionFilter
         /// then that will be used to short-circuit the request.
         /// </summary>
         public List<WhiteListEntry> WhiteListEntries { get; set; }
+
+        /// <summary>
+        /// Max Recursion Depth dictates the deep the filter will look for malicious content in nested types.
+        /// By default, this value is -1, which means infinite recursion depth.
+        /// </summary>
+        public int MaxRecursionDepth { get; set; } = -1;
     }
 
     /// <summary>
