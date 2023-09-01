@@ -3,7 +3,7 @@
     public class LegitimateRichText
     {
         public int ModelId { get; set; }
-        public string? MoreText { get; set; }
-        public string? AllowedRichText { get; set; }
+        public string MoreText { get; set; }
+        public string AllowedRichText { get; set; }
     }
 }
