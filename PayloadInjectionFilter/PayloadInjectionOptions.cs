@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace PayloadInjectionFilter_NS
+namespace Zone24x7PayloadExtensionFilter
 {
     /// <summary>
     /// Set fine-tuning options for the payload filter
