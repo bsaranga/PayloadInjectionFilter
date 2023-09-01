@@ -5,9 +5,9 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using System.Collections;
-using Microsoft.AspNetCore.Mvc.Controllers;
+using Zone24x7PayloadExtensionFilter.HelperExtensions;
 
-namespace PayloadInjectionFilter_NS
+namespace Zone24x7PayloadExtensionFilter
 {
     /// <summary>
     /// This filter intercepts the requests before it
@@ -79,34 +79,30 @@ namespace PayloadInjectionFilter_NS
                 {
                     FilterExecuted = true;
 
-                    IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
-
-                    foreach (var item in context.ActionArguments)
+                    foreach (var argument in context.ActionArguments)
                     {
                         if (hasWhiteListedEntries && whiteListIndex != -1)
                         {
-                            parameterMatch = options.Value.WhiteListEntries[whiteListIndex].ParameterName.Equals(item.Key);
+                            parameterMatch = options.Value.WhiteListEntries[whiteListIndex].ParameterName.Equals(argument.Key);
                             whiteListInitialCondition = parameterMatch && templateMatch;
                         }
                         
-                        var argumentType = item.Value!.GetType();
+                        var argumentType = argument.Value.GetType();
 
                         if (argumentType.IsString())
                         {
-                            if (DetectDisallowedChars(item.Value as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                            if (DetectDisallowedChars(argument.Value as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
                             {
                                 ShortCircuit(context);
                             }
-                        }
-
-                        if (argumentType.IsEnumerable())
+                        } else if (argumentType.IsEnumerable())
                         {
-                            foreach (var listItem in (item.Value as IEnumerable)!)
+                            foreach (var listItem in (argument.Value as IEnumerable)!)
                             {
                                 Evaluate(listItem.GetType(), listItem, context, whiteListIndex, whiteListInitialCondition);
                             }
                         }
-                        else Evaluate(argumentType, item.Value, context, whiteListIndex, whiteListInitialCondition);
+                        else Evaluate(argumentType, argument.Value, context, whiteListIndex, whiteListInitialCondition);
                     }
                 }
             }
@@ -117,27 +113,30 @@ namespace PayloadInjectionFilter_NS
             }
         }
 
-        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context, int whiteListIndex, bool initialWhiteListCondition)
+        private void Evaluate(Type argType, object arg, ActionExecutingContext context, int whiteListIndex, bool initialWhiteListCondition)
         {
             IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
             bool isWhiteListedProperty = false;
 
-            if (!incomingType.IsValueType() && !incomingType.IsString())
+            if (arg != null && !argType.IsValueType())
             {
-                properties = incomingType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            }
+                properties = argType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-            if (properties.Any())
-            {
-                foreach (var prop in properties)
+                if (properties.Any())
                 {
-                    isWhiteListedProperty = whiteListIndex != -1 ? options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name) : false;
-
-                    if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
+                    foreach (var prop in properties)
                     {
-                        if (DetectDisallowedChars(prop.GetValue(incomingItem) as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                        isWhiteListedProperty = whiteListIndex != -1 ? options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name) : false;
+
+                        if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
                         {
-                            ShortCircuit(context);
+                            if (DetectDisallowedChars(prop.GetValue(arg) as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                            {
+                                ShortCircuit(context);
+                            }
+                        } else if (!prop.PropertyType.IsValueType)
+                        {
+                            Evaluate(prop.PropertyType, prop.GetValue(arg), context, whiteListIndex, initialWhiteListCondition);
                         }
                     }
                 }
@@ -161,34 +160,6 @@ namespace PayloadInjectionFilter_NS
                 StatusCode = options.Value.ResponseStatusCode == 0 ? DEFAULT_STATUS_CODE : options.Value.ResponseStatusCode,
                 ContentType = options.Value.ResponseContentType ?? DEFAULT_CONTENT_TYPE
             };
-        }
-    }
-
-    internal static class PayloadInjectionFilterExtensions
-    {
-        internal static bool IsString(this PropertyInfo propInfo)
-        {
-            return propInfo.PropertyType.Name == "String" && propInfo.PropertyType.FullName == "System.String";
-        }
-
-        internal static bool IsString(this Type objectType)
-        {
-            return objectType.Name == "String" && objectType.FullName == "System.String";
-        }
-
-        internal static bool IsValueType(this Type objectType)
-        {
-            return objectType.BaseType!.Name == "ValueType" && objectType.BaseType.FullName == "System.ValueType";
-        }
-
-        internal static bool IsEnumerable(this Type objectType)
-        {
-            return typeof(IEnumerable).IsAssignableFrom(objectType);
-        }
-
-        internal static bool IsOneOfAllowedHttpMethods(this ActionExecutingContext context, params string[] HttpMethods)
-        {
-            return HttpMethods.Contains(context.HttpContext.Request.Method);
         }
     }
 }
