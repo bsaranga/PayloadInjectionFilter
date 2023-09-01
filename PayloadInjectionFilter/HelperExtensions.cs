@@ -7,22 +7,27 @@ namespace Zone24x7PayloadExtensionFilter.HelperExtensions
     {
         public static bool IsString(this PropertyInfo propInfo)
         {
-            return propInfo.PropertyType.Name == "String" && propInfo.PropertyType.FullName == "System.String";
+            if (propInfo == null)
+            {
+                throw new ArgumentNullException(nameof(propInfo));
+            }
+
+            return propInfo.PropertyType == typeof(string);
         }
 
         public static bool IsString(this Type objectType)
         {
-            return objectType.Name == "String" && objectType.FullName == "System.String";
-        }
+            if (objectType == null)
+            {
+                throw new ArgumentNullException(nameof(objectType));
+            }
 
-        public static bool IsValueType(this Type objectType)
-        {
-            return objectType.BaseType!.Name == "ValueType" && objectType.BaseType.FullName == "System.ValueType";
+            return objectType == typeof(string);
         }
 
         public static bool IsEnumerable(this Type objectType)
         {
-            return objectType.Name.Equals("List`1");
+            return !objectType.IsString() && objectType.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
         }
 
         public static bool IsOneOfAllowedHttpMethods(this ActionExecutingContext context, params string[] HttpMethods)
