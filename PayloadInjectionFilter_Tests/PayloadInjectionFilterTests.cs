@@ -7,10 +7,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using System.Text.RegularExpressions;
-using PayloadInjectionFilter_NS;
 using PayloadInjectionFilter_Tests.CustomTypes;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Zone24x7PayloadExtensionFilter;
 
 namespace PayloadInjectionFilter_Tests
 {
@@ -43,7 +43,7 @@ namespace PayloadInjectionFilter_Tests
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(false));
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(false));
         }
 
         [TestCase("POST")]
@@ -82,8 +82,8 @@ namespace PayloadInjectionFilter_Tests
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
-            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(true));
         }
 
         [TestCase("POST")]
@@ -131,8 +131,9 @@ namespace PayloadInjectionFilter_Tests
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
-            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(true));
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
         }
 
         [TestCase("PATCH")]
@@ -185,8 +186,9 @@ namespace PayloadInjectionFilter_Tests
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
-            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(true));
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
         }
 
         [Test]
@@ -242,8 +244,9 @@ namespace PayloadInjectionFilter_Tests
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
-            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(false));
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(false));
+            Assert.That(sanitizationFilter.GetCurrentContext().Result, Is.Null);
         }
 
         [Test]
@@ -309,8 +312,555 @@ namespace PayloadInjectionFilter_Tests
 
             sanitizationFilter.OnActionExecuting(actionExecutingContext);
 
-            Assert.That(sanitizationFilter.FilterExecuted, Is.EqualTo(true));
-            Assert.That(sanitizationFilter.ShortCircuited, Is.EqualTo(false));
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(false));
+            Assert.That(sanitizationFilter.GetCurrentContext().Result, Is.Null);
+        }
+
+        [TestCase("PUT")]
+        public void ShortCircuits_For_Nested_Types_In_Payload(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "recursiveType",
+                    new RecursiveType
+                    {
+                        Text1 = "Hello1",
+                        Text2 = "Hello2",
+                        Nested = new RecursiveType
+                        {
+                            Text1 = "<Hello/>",
+                            Text2 = "Hello World"
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(true));
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
+        }
+
+        [TestCase("PUT")]
+        public void ShortCircuits_For_Nested_Lists_In_Payload(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "nestedLists",
+                    new NestedLists
+                    {
+                        Id = 1,
+                        ListedItem = new List<ListItem>
+                        {
+                            new ListItem
+                            {
+                                ServiceId = 1,
+                                ChecklistItem = "jsahdk",
+                                Link = "asd8oi",
+                                LinkName = "ashdiua"
+                            },
+                            new ListItem
+                            {
+                                ServiceId = 2,
+                                ChecklistItem = "<a href=\"https://evil.com\">Evil</a>",
+                                Link = "kskdf",
+                                LinkName = "EVIL"
+                            }
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(true));
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
+        }
+
+        [TestCase("PUT")]
+        public void ShortCircuits_For_Recursive_Nested_Lists_In_Payload(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "recursiveNestedLists",
+                    new RecursiveListType
+                    {
+                        Data = "safe",
+                        NestedList = new List<RecursiveListType>
+                        {
+                            new RecursiveListType
+                            {
+                                Data = "safe",
+                                NestedList = new List<RecursiveListType>
+                                {
+                                    new RecursiveListType
+                                    {
+                                        Data = "safe"
+                                    }
+                                }
+                            },
+                            new RecursiveListType
+                            {
+                                Data = "safe",
+                                NestedList = new List<RecursiveListType>
+                                {
+                                    new RecursiveListType
+                                    {
+                                        Data = "safe",
+                                        NestedList = new List<RecursiveListType>
+                                        {
+                                            new RecursiveListType
+                                            {
+                                                Data = "<unsafe/>"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(true));
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
+        }
+
+        [TestCase("PUT")]
+        public void Gets_All_Malicious_Content(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "recursiveNestedLists",
+                    new RecursiveListType
+                    {
+                        Data = "<malicio&us?/>",
+                        NestedList = new List<RecursiveListType>
+                        {
+                            new RecursiveListType
+                            {
+                                Data = "<unsage&us?/>",
+                                NestedList = new List<RecursiveListType>
+                                {
+                                    new RecursiveListType
+                                    {
+                                        Data = "<malicio&us666?/>"
+                                    }
+                                }
+                            },
+                            new RecursiveListType
+                            {
+                                Data = "<a href=\"https://evil.com\">Cool options!</a>",
+                                NestedList = new List<RecursiveListType>
+                                {
+                                    new RecursiveListType
+                                    {
+                                        Data = "safe",
+                                        NestedList = new List<RecursiveListType>
+                                        {
+                                            new RecursiveListType
+                                            {
+                                                Data = "<unsafe/>"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.GetCaughtMaliciousContent().Count, Is.EqualTo(5));
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
+        }
+
+        [TestCase("PUT")]
+        public void Able_To_Determine_Correct_RecursionDepth(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "recursiveNestedLists",
+                    new RecursiveListType
+                    {
+                        Data = "safe",
+                        NestedList = new List<RecursiveListType>
+                        {
+                            new RecursiveListType
+                            {
+                                Data = "safe",
+                                NestedList = new List<RecursiveListType>
+                                {
+                                    new RecursiveListType
+                                    {
+                                        Data = "safe",
+                                        NestedList = new List<RecursiveListType>
+                                        {
+                                            new RecursiveListType
+                                            {
+                                                Data = "safe",
+                                                NestedList = new List<RecursiveListType>
+                                                {
+                                                    new RecursiveListType
+                                                    {
+                                                        Data = "safe",
+                                                        NestedList = new List<RecursiveListType>
+                                                        {
+                                                            new RecursiveListType
+                                                            {
+                                                                Data = "safe",
+                                                                NestedList = new List<RecursiveListType>
+                                                                {
+                                                                    new RecursiveListType
+                                                                    {
+                                                                        Data = "safe",
+                                                                        NestedList = new List<RecursiveListType>
+                                                                        {
+
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.GetCurrentRecursionDepth(), Is.EqualTo(6));
+        }
+
+        [TestCase("PUT")]
+        public void Exceeds_Defined_Recursive_Depth(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]"),
+                MaxRecursionDepth = 10
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "recursiveNestedLists",
+                    new RecursiveListType
+                    {
+                        Data = "safe",
+                        NestedList = new List<RecursiveListType>
+                        {
+                            new RecursiveListType
+                            {
+                                Data = "safe",
+                                NestedList = new List<RecursiveListType>
+                                {
+                                    new RecursiveListType
+                                    {
+                                        Data = "safe",
+                                        NestedList = new List<RecursiveListType>
+                                        {
+                                            new RecursiveListType
+                                            {
+                                                Data = "safe",
+                                                NestedList = new List<RecursiveListType>
+                                                {
+                                                    new RecursiveListType
+                                                    {
+                                                        Data = "safe",
+                                                        NestedList = new List<RecursiveListType>
+                                                        {
+                                                            new RecursiveListType
+                                                            {
+                                                                Data = "safe",
+                                                                NestedList = new List<RecursiveListType>
+                                                                {
+                                                                    new RecursiveListType
+                                                                    {
+                                                                        Data = "safe",
+                                                                        NestedList = new List<RecursiveListType>
+                                                                        {
+                                                                            new RecursiveListType
+                                                                            {
+                                                                                Data = "safe",
+                                                                                NestedList = new List<RecursiveListType>
+                                                                                {
+                                                                                    new RecursiveListType
+                                                                                    {
+                                                                                        Data = "safe",
+                                                                                        NestedList = new List<RecursiveListType>
+                                                                                        {
+                                                                                            new RecursiveListType
+                                                                                            {
+                                                                                                Data = "safe",
+                                                                                                NestedList = new List<RecursiveListType>
+                                                                                                {
+                                                                                                    new RecursiveListType
+                                                                                                    {
+                                                                                                        Data = "safe",
+                                                                                                        NestedList = new List<RecursiveListType>
+                                                                                                        {
+                                                                                                            new RecursiveListType
+                                                                                                            {
+                                                                                                                Data = "safe",
+                                                                                                                NestedList = new List<RecursiveListType>
+                                                                                                                {
+                                                                                                                    new RecursiveListType
+                                                                                                                    {
+                                                                                                                        Data = "safe",
+                                                                                                                        NestedList = new List<RecursiveListType>
+                                                                                                                        {
+
+                                                                                                                        }
+                                                                                                                    }
+                                                                                                                }
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.IsFalse(sanitizationFilter.HasShortCircuited);
+            Assert.IsTrue(sanitizationFilter.RecursionDepthHasExceeded);
+            Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(413));
+        }
+
+        [TestCase("PATCH")]
+        public void Default_Recursion_Depth_Is_Minus_One(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousQueryParameters = new Dictionary<string, object>
+            {
+                {
+                    "queryParam1",
+                    "foo@g<>.com"
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousQueryParameters, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.GetMaxRecursionDepth(), Is.EqualTo(-1));
+        }
+
+        [TestCase("PATCH")]
+        public void Recursion_Depth_Is_Properly_Set(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]"),
+                MaxRecursionDepth = 100
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            var maliciousQueryParameters = new Dictionary<string, object>
+            {
+                {
+                    "queryParam1",
+                    "foo@g<>.com"
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousQueryParameters, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.GetMaxRecursionDepth(), Is.EqualTo(100));
         }
     }
 }

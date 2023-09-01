@@ -5,9 +5,10 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using System.Collections;
-using Microsoft.AspNetCore.Mvc.Controllers;
+using Zone24x7PayloadExtensionFilter.HelperExtensions;
+using System.Net;
 
-namespace PayloadInjectionFilter_NS
+namespace Zone24x7PayloadExtensionFilter
 {
     /// <summary>
     /// This filter intercepts the requests before it
@@ -21,6 +22,12 @@ namespace PayloadInjectionFilter_NS
         public static readonly int DEFAULT_STATUS_CODE = 400;
         public static readonly string DEFAULT_CONTENT_TYPE = "text";
         public static readonly Regex DEFAULT_FILTER_PATTERN = new Regex(@"[<>\&;]");
+        private int PLACE_HOLDER_RECURSION_DEPTH = int.MinValue;
+
+        private int MaxRecursionDepth;
+        private int CurrentRecursionDepth;
+        private List<string> CaughtMaliciousContent;
+        private ActionExecutingContext CurrentContext;
 
         private readonly ILogger<PayloadInjectionFilter> logger;
         private readonly IOptions<PayloadInjectionOptions> options;
@@ -35,18 +42,27 @@ namespace PayloadInjectionFilter_NS
         {
             this.options = options;
             this.logger = logger;
+
+            this.MaxRecursionDepth = -1;
+            this.CurrentRecursionDepth = 0;
+            this.CaughtMaliciousContent = new List<string>();
         }
 
         /// <summary>
         /// Used to track if the filter executed in unit tests
         /// </summary>
-        public bool FilterExecuted { get; private set; } = false;
+        public bool FilterHasExecuted { get; private set; } = false;
 
         /// <summary>
         /// Used to track if the filter is short-circuited in unit tests
         /// </summary>
-        public bool ShortCircuited { get; private set; } = false;
-        
+        public bool HasShortCircuited { get; private set; } = false;
+
+        /// <summary>
+        /// Used to track if recursion depth has exceeded
+        /// </summary>
+        public bool RecursionDepthHasExceeded { get; private set; } = false;
+
         /// <summary>
         /// Runs after the validation
         /// </summary>
@@ -61,6 +77,9 @@ namespace PayloadInjectionFilter_NS
         {
             try
             {
+                CurrentContext = context;
+                MaxRecursionDepth = options.Value.MaxRecursionDepth;
+
                 string pathTemplate;
                 int whiteListIndex = -1;
                 bool templateMatch = false;
@@ -77,36 +96,32 @@ namespace PayloadInjectionFilter_NS
 
                 if (context.IsOneOfAllowedHttpMethods(options.Value.AllowedHttpMethods!.Select(x => x.ToString()).Distinct().ToArray()))
                 {
-                    FilterExecuted = true;
+                    FilterHasExecuted = true;
 
-                    IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
-
-                    foreach (var item in context.ActionArguments)
+                    foreach (var argument in context.ActionArguments)
                     {
                         if (hasWhiteListedEntries && whiteListIndex != -1)
                         {
-                            parameterMatch = options.Value.WhiteListEntries[whiteListIndex].ParameterName.Equals(item.Key);
+                            parameterMatch = options.Value.WhiteListEntries[whiteListIndex].ParameterName.Equals(argument.Key);
                             whiteListInitialCondition = parameterMatch && templateMatch;
                         }
                         
-                        var argumentType = item.Value!.GetType();
+                        var argumentType = argument.Value.GetType();
 
                         if (argumentType.IsString())
                         {
-                            if (DetectDisallowedChars(item.Value as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                            if (DetectDisallowedChars(argument.Value as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
                             {
-                                ShortCircuit(context);
+                                ShortCircuit(context, argument.Value as string);
                             }
-                        }
-
-                        if (argumentType.IsEnumerable())
+                        } else if (argumentType.IsEnumerable())
                         {
-                            foreach (var listItem in (item.Value as IEnumerable)!)
+                            foreach (var listItem in (argument.Value as IEnumerable)!)
                             {
-                                Evaluate(listItem.GetType(), listItem, context, whiteListIndex, whiteListInitialCondition);
+                                Evaluate(listItem.GetType(), listItem, context, whiteListIndex, whiteListInitialCondition, ref PLACE_HOLDER_RECURSION_DEPTH);
                             }
                         }
-                        else Evaluate(argumentType, item.Value, context, whiteListIndex, whiteListInitialCondition);
+                        else Evaluate(argumentType, argument.Value, context, whiteListIndex, whiteListInitialCondition, ref PLACE_HOLDER_RECURSION_DEPTH);
                     }
                 }
             }
@@ -117,43 +132,63 @@ namespace PayloadInjectionFilter_NS
             }
         }
 
-        private void Evaluate(Type incomingType, object incomingItem, ActionExecutingContext context, int whiteListIndex, bool initialWhiteListCondition)
+        private void Evaluate(Type argType, object arg, ActionExecutingContext context, int whiteListIndex, bool initialWhiteListCondition, ref int recursionDepth)
         {
             IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
             bool isWhiteListedProperty = false;
 
-            if (!incomingType.IsValueType() && !incomingType.IsString())
-            {
-                properties = incomingType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            }
+            if (recursionDepth != PLACE_HOLDER_RECURSION_DEPTH) recursionDepth++;
 
-            if (properties.Any())
+            if (MaxRecursionDepth == -1 || recursionDepth <= MaxRecursionDepth)
             {
-                foreach (var prop in properties)
+                if (arg != null && !argType.IsValueType)
                 {
-                    isWhiteListedProperty = whiteListIndex != -1 ? options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name) : false;
+                    properties = argType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
-                    if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
+                    if (properties.Any())
                     {
-                        if (DetectDisallowedChars(prop.GetValue(incomingItem) as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                        foreach (var prop in properties)
                         {
-                            ShortCircuit(context);
+                            isWhiteListedProperty = whiteListIndex != -1 ? options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name) : false;
+
+                            if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
+                            {
+                                if (DetectDisallowedChars(prop.GetValue(arg) as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                                {
+                                    ShortCircuit(context, prop.GetValue(arg) as string);
+                                }
+                            }
+                            else if (!prop.PropertyType.IsValueType)
+                            {
+                                if (prop.PropertyType.IsEnumerable())
+                                {
+                                    if (prop.GetValue(arg) != null)
+                                    {
+                                        foreach (var item in (prop.GetValue(arg) as IEnumerable<object>))
+                                            Evaluate(item.GetType(), item, context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
+                                    }
+                                }
+                                else Evaluate(prop.PropertyType, prop.GetValue(arg), context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
+                            }
                         }
                     }
                 }
             }
+            else RecursionDepthExceeded(context);
         }
 
-        private bool DetectDisallowedChars(string? input, Regex disallowedPattern)
+        private bool DetectDisallowedChars(string input, Regex disallowedPattern)
         {
             if (string.IsNullOrEmpty(input)) return false;
             
             return disallowedPattern.IsMatch(input);
         }
 
-        private void ShortCircuit(ActionExecutingContext context)
+        private void ShortCircuit(ActionExecutingContext context, string maliciousContent)
         {
-            ShortCircuited = true;
+            HasShortCircuited = true;
+            CaughtMaliciousContent.Add(maliciousContent);
+
             context.ModelState.AddModelError("__shortcircuit__", "Malicious content");
             context.Result = new ContentResult
             {
@@ -162,33 +197,24 @@ namespace PayloadInjectionFilter_NS
                 ContentType = options.Value.ResponseContentType ?? DEFAULT_CONTENT_TYPE
             };
         }
-    }
 
-    internal static class PayloadInjectionFilterExtensions
-    {
-        internal static bool IsString(this PropertyInfo propInfo)
+        private void RecursionDepthExceeded(ActionExecutingContext context)
         {
-            return propInfo.PropertyType.Name == "String" && propInfo.PropertyType.FullName == "System.String";
+            RecursionDepthHasExceeded = true;
+            context.ModelState.AddModelError("__recursiondepthexceeded__", "Recursion depth has exceeded");
+            context.Result = new ContentResult
+            {
+                Content = "Recursion depth has exceeded",
+                StatusCode = ((int)HttpStatusCode.RequestEntityTooLarge),
+                ContentType = DEFAULT_CONTENT_TYPE
+            };
+
+            logger.LogWarning("[PayloadInjectionFilter]:[Warning] Recursion depth has exceeded.");
         }
 
-        internal static bool IsString(this Type objectType)
-        {
-            return objectType.Name == "String" && objectType.FullName == "System.String";
-        }
-
-        internal static bool IsValueType(this Type objectType)
-        {
-            return objectType.BaseType!.Name == "ValueType" && objectType.BaseType.FullName == "System.ValueType";
-        }
-
-        internal static bool IsEnumerable(this Type objectType)
-        {
-            return typeof(IEnumerable).IsAssignableFrom(objectType);
-        }
-
-        internal static bool IsOneOfAllowedHttpMethods(this ActionExecutingContext context, params string[] HttpMethods)
-        {
-            return HttpMethods.Contains(context.HttpContext.Request.Method);
-        }
+        public List<string> GetCaughtMaliciousContent() => CaughtMaliciousContent;
+        public int GetCurrentRecursionDepth() => CurrentRecursionDepth;
+        public ActionExecutingContext GetCurrentContext() => CurrentContext;
+        public int GetMaxRecursionDepth() => MaxRecursionDepth;
     }
 }
