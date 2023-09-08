@@ -1,0 +1,24 @@
+{
+  "id": 45933,
+  "serviceId": 2604,
+  "locationId": 13,
+  "durationInMins": 30,
+  "inPersonAppointment": true,
+  "phoneAppointment": true,
+  "virtualAppointment": true,
+  "showInWidget": true,
+  "allowModifyWidget": true,
+  "requireComments": false,
+  "localizedCommentsList": [
+    {
+      "languageId": 1,
+      "localizedFieldId": 10,
+      "text": "<div>hello world</div>"
+    }
+  ],
+  "additoinalInformation": "<p>Hello World</p>\n\n<p><strong>Hello World</strong></p>\n\n<p><em>Hello World</em></p>\n\n<p><s>Hello World</s></p>\n\n<h1>Hello World</h1>\n",
+  "applyForAllLocations": false,
+  "locationIds": [
+    -1
+  ]
+}

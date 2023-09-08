@@ -1,0 +1,103 @@
+[
+  {
+    "userId": 1033,
+    "serviceId": 1,
+    "proficiency": 70,
+    "optIn": true,
+    "serviceName": "Catty Service1 edit 1",
+    "categoryName": "Card Services",
+    "categoryId": 2,
+    "isProficiencyInvalid": false,
+    "editable": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 2,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Catty Service2",
+    "categoryName": "Card Services",
+    "categoryId": 2,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 3,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Catty Service3 <hello/>&foobar",
+    "categoryName": "Card Services",
+    "categoryId": 2,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 4,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Virtual Service1",
+    "categoryName": "Virtual",
+    "categoryId": 6,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 5,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Virtual Service2",
+    "categoryName": "Virtual",
+    "categoryId": 6,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 6,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Catty Service4",
+    "categoryName": "Card Services",
+    "categoryId": 2,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 7,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "new",
+    "categoryName": "Card Services",
+    "categoryId": 2,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 9,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Credit Card Renewal",
+    "categoryName": "Account Maintenance",
+    "categoryId": 4,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 10,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "www",
+    "categoryName": "Card Services",
+    "categoryId": 2,
+    "isProficiencyInvalid": false
+  },
+  {
+    "userId": 1033,
+    "serviceId": 1009,
+    "proficiency": 100,
+    "optIn": true,
+    "serviceName": "Test",
+    "categoryName": "API Cat edit",
+    "categoryId": 7,
+    "isProficiencyInvalid": false
+  }
+]

@@ -134,22 +134,21 @@ namespace Zone24x7PayloadExtensionFilter
 
         private void Evaluate(Type argType, object arg, ActionExecutingContext context, int whiteListIndex, bool initialWhiteListCondition, ref int recursionDepth)
         {
-            IEnumerable<PropertyInfo> properties = new List<PropertyInfo>();
             bool isWhiteListedProperty = false;
 
             if (recursionDepth != PLACE_HOLDER_RECURSION_DEPTH) recursionDepth++;
 
             if (MaxRecursionDepth == -1 || recursionDepth <= MaxRecursionDepth)
             {
-                if (arg != null && !argType.IsValueType)
+                if (arg != null && (!argType.IsValueType || argType.IsKeyValuePair()))
                 {
-                    properties = argType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                    IEnumerable<PropertyInfo> properties = argType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
                     if (properties.Any())
                     {
                         foreach (var prop in properties)
                         {
-                            isWhiteListedProperty = whiteListIndex != -1 ? options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name) : false;
+                            isWhiteListedProperty = whiteListIndex != -1 && options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name);
 
                             if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
                             {
@@ -164,7 +163,7 @@ namespace Zone24x7PayloadExtensionFilter
                                 {
                                     if (prop.GetValue(arg) != null)
                                     {
-                                        foreach (var item in (prop.GetValue(arg) as IEnumerable<object>))
+                                        foreach (var item in (prop.GetValue(arg) as IEnumerable))
                                             Evaluate(item.GetType(), item, context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
                                     }
                                 }

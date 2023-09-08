@@ -30,6 +30,11 @@ namespace Zone24x7PayloadExtensionFilter.HelperExtensions
             return !objectType.IsString() && objectType.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
         }
 
+        public static bool IsKeyValuePair(this Type objectType)
+        {
+            return objectType.Name.Equals("KeyValuePair`2");
+        }
+
         public static bool IsOneOfAllowedHttpMethods(this ActionExecutingContext context, params string[] HttpMethods)
         {
             return HttpMethods.Contains(context.HttpContext.Request.Method);

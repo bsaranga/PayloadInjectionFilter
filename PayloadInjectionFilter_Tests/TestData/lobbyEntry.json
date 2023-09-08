@@ -1,0 +1,28 @@
+{
+  "LobbyEntryId": 0,
+  "LobbyId": 1,
+  "LocationId": 2,
+  "LobbySourceId": 1,
+  "TimeZoneId": "Sri Lanka Standard Time",
+  "AccountNumber": "3784892749832yuhj",
+  "FirstName": "Frodo",
+  "LastName": "Baggins",
+  "DateOfBirth": "",
+  "Notes": "",
+  "PhoneNumber": "<fake></fake>",
+  "EmailAddress": "frodobaggins@ukg-dev.com",
+  "PreferredLanguage": 1,
+  "RecieveTextMessage": false,
+  "AddedBy": 1,
+  "ServiceRequested": [
+    3,
+    1
+  ],
+  "CustomFieldValues": {
+    "field7": "something",
+    "anotherPRop":  "yolo"
+  },
+  "AppointmentId": null,
+  "UserRequested": null,
+  "GroupRequested": null
+}

@@ -1,0 +1,72 @@
+{
+  "serviceSortOrderList": [
+    {
+      "id": 1009,
+      "serviceName": "Test",
+      "sortOrder": 1
+    },
+    {
+      "id": 1,
+      "serviceName": "Catty Service1 edit 1",
+      "sortOrder": 2
+    },
+    {
+      "id": 2,
+      "serviceName": "Catty Service2",
+      "sortOrder": 3
+    },
+    {
+      "id": 6,
+      "serviceName": "Catty Service4 <hello/>",
+      "sortOrder": 4
+    },
+    {
+      "id": 9,
+      "serviceName": "Credit Card Renewal",
+      "sortOrder": 5
+    },
+    {
+      "id": 7,
+      "serviceName": "new",
+      "sortOrder": 6
+    },
+    {
+      "id": 4,
+      "serviceName": "Virtual Service1",
+      "sortOrder": 7
+    },
+    {
+      "id": 5,
+      "serviceName": "Virtual Service2",
+      "sortOrder": 8
+    },
+    {
+      "id": 10,
+      "serviceName": "www",
+      "sortOrder": 9
+    },
+    {
+      "id": 3,
+      "serviceName": "Catty Service3",
+      "sortOrder": 10
+    }
+  ],
+  "applyForAllLocations": true,
+  "locationIds": [
+    1,
+    8,
+    1011,
+    7,
+    4,
+    6,
+    10,
+    9,
+    11,
+    12,
+    2,
+    3,
+    5
+  ],
+  "isCategorySortOrderType": false,
+  "serviceCategoryId": 0
+}
