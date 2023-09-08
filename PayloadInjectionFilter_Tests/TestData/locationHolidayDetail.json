@@ -1,0 +1,146 @@
+{
+  "locationHoliday": {
+    "id": 13,
+    "holidayName": "Christmas <>hello</>",
+    "date": "12/25/2023",
+    "optInAtSubLocations": true,
+    "timeGroup": {
+      "startTime": "2023-12-24T18:30:00.000Z",
+      "endTime": "2023-12-24T18:45:00.000Z"
+    },
+    "isAllDay": true,
+    "blackOutDay": true,
+    "startTime": "12/25/2023 00:00",
+    "endTime": "12/25/2023 00:15",
+    "locationIds": null
+  },
+  "subLocationHolidays": [
+    {
+      "id": 16,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 13:45",
+      "isAllDay": false,
+      "blackOutDay": true,
+      "status": "Overriden",
+      "locationId": 4
+    },
+    {
+      "id": 18,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 6
+    },
+    {
+      "id": 19,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 7
+    },
+    {
+      "id": 21,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 17:15",
+      "isAllDay": false,
+      "blackOutDay": false,
+      "status": "Overriden",
+      "locationId": 9
+    },
+    {
+      "id": 22,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 10
+    },
+    {
+      "id": 23,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 11
+    },
+    {
+      "id": 24,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 12
+    },
+    {
+      "id": 17,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 5
+    },
+    {
+      "id": 14,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 2
+    },
+    {
+      "id": 15,
+      "holidayName": "Christmas",
+      "date": "12/25/2023",
+      "optInAtSubLocations": true,
+      "startTime": "12/25/2023 00:00",
+      "endTime": "12/25/2023 00:15",
+      "isAllDay": true,
+      "blackOutDay": true,
+      "status": "Inherited",
+      "locationId": 3
+    }
+  ],
+  "holidaysChangetracing": {
+    "isBlackOutChanged": false,
+    "isAllDayChanged": false,
+    "isOptInChanged": false,
+    "isStartTimeChanged": false,
+    "isEndTimeChanged": false
+  }
+}
