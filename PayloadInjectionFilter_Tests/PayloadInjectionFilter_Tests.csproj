@@ -25,6 +25,9 @@
     <None Update="TestData\appointmentSettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TestData\detailsViewCharDataRequests.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="TestData\lobbyEntry.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

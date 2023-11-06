@@ -1,0 +1,49 @@
+{
+  "template": {
+    "templateId": -1,
+    "isDefault": false,
+    "templateName": "Unfiltered",
+    "allLocations": true,
+    "allAssistTypes": true,
+    "allCategories": true,
+    "allDays": true,
+    "allServices": true,
+    "allRequestedStaff": true,
+    "allAssistedBy": true,
+    "allSupervisors": true,
+    "allStatuses": true,
+    "activeFilters": {
+      "locations": [],
+      "assistTypes": [],
+      "categories": [],
+      "daysOfWeek": [],
+      "defaultViews": [
+        {
+          "viewId": 1,
+          "viewName": "Location Comparison"
+        }
+      ],
+      "searchTerms": [
+        {
+          "detailViewSearchTermId": -1,
+          "searchTerm": ""
+        }
+      ],
+      "services": [],
+      "requestedStaff": [],
+      "assistedBy": [],
+      "supervisors": [],
+      "staffTypes": [],
+      "statuses": [],
+      "viewTypes": [
+        {
+          "detailViewTypeId": 1,
+          "viewName": "Location Comparison"
+        }
+      ],
+      "timePeriods": []
+    }
+  },
+  "startDate": "2023-08-31T13:37:13+05:30",
+  "endDate": "2023-09-07T13:37:13+05:30"
+}
