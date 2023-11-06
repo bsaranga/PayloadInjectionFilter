@@ -6,6 +6,14 @@ A reusable payload injection filter for ASP.NET Core. This can be used to short-
 
 Available on [NuGet](https://www.nuget.org/packages/Zone24x7.PayloadInjectionFilter/)
 
+## Features
+
+1. Pattern based detection of malicious strings in JSON payloads
+2. Specify the HTTP methods on which the filter should execute
+3. Specify the short-circuit response by setting status code, content type and body
+4. Supports recursive payloads, including recursion limit specification
+5. Specific properties in specific endpoints can be white-listed
+
 ## Usage
 
 The `AddPayloadInjectionFilter` method can be chained to the `AddControllers` method in a usual ASP.NET Core service configuration section. For the filter to work, you must specify the HTTP methods that it should operate on and the regex pattern that specifies a match for malicious content. The filter will check model bound bodies such as custom types and plain strings bound from query parameters.
@@ -112,16 +120,16 @@ public void ConfigureServices(IServiceCollection services)
 Further more, selected properties in the models bound selected API endpoints can be ignored by specification.
 
 ```csharp
-                cfg.WhiteListEntries = new List<WhiteListEntry>
-                {
-                    new WhiteListEntry
-                    {
-                        PathTemplate = "api/Services/appointmentSettings/{id}",
-                        ParameterName = "appointmentSetting",
-                        PropertyNames = new List<string>
-                        {
-                            nameof(ServiceAppointmentSetting.AdditoinalInformation)
-                        }
-                    }
-                };
+cfg.WhiteListEntries = new List<WhiteListEntry>
+{
+    new WhiteListEntry
+    {
+        PathTemplate = "api/Services/appointmentSettings/{id}",
+        ParameterName = "appointmentSetting",
+        PropertyNames = new List<string>
+        {
+            nameof(ServiceAppointmentSetting.AdditoinalInformation)
+        }
+    }
+};
 ```
