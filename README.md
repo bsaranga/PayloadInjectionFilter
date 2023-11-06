@@ -53,3 +53,75 @@ public void ConfigureServices(IServiceCollection services)
             });
 }
 ```
+
+For recursive types such as this, the filter will recursively check all properties.
+
+```csharp
+var sampleRecursiveList = new RecursiveListType
+{
+    Data = "sample",
+    NestedList = new List<RecursiveListType>
+    {
+        new RecursiveListType
+        {
+            Data = "sample",
+            NestedList = new List<RecursiveListType>
+            {
+                new RecursiveListType
+                {
+                    Data = "sample"
+                }
+            }
+        },
+        new RecursiveListType
+        {
+            Data = "sample",
+            NestedList = new List<RecursiveListType>
+            {
+                new RecursiveListType
+                {
+                    Data = "sample",
+                    NestedList = new List<RecursiveListType>
+                    {
+                        new RecursiveListType
+                        {
+                            Data = "<unsafe/>"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+The maximum recursion depth can be set as shown below. The default for this property is -1, meaning an infinite recursion depth.
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddControllers()
+            .AddPayloadInjectionFilter(cfg =>
+            {
+                // Other overrides hidden
+                cfg.MaxRecursionDepth = 10;
+            });
+}
+```
+
+Further more, selected properties in the models bound selected API endpoints can be ignored by specification.
+
+```csharp
+                cfg.WhiteListEntries = new List<WhiteListEntry>
+                {
+                    new WhiteListEntry
+                    {
+                        PathTemplate = "api/Services/appointmentSettings/{id}",
+                        ParameterName = "appointmentSetting",
+                        PropertyNames = new List<string>
+                        {
+                            nameof(ServiceAppointmentSetting.AdditoinalInformation)
+                        }
+                    }
+                };
+```
