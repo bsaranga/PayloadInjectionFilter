@@ -245,5 +245,48 @@ namespace PayloadInjectionFilter_Tests
             Assert.That(sanitizationFilter.GetCaughtMaliciousContent().Contains("Catty Service3 <hello/>&foobar"), Is.True);
             Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
         }
+
+        [Test]
+        public void ComplexCustomTypeShouldNotFailDuringRecursion()
+        {
+            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\detailsViewCharDataRequests.json";
+            var datum = File.ReadAllText(path, Encoding.UTF8);
+
+            var deserializedDatum = JsonConvert.DeserializeObject<DetailsViewChartDataRequest>(datum);
+
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = "PUT";
+
+            var maliciousBody = new Dictionary<string, object>
+            {
+                {
+                    "deserializedDatum",
+                    deserializedDatum
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Report"
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), maliciousBody, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.FilterHasExecuted, Is.EqualTo(true));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.EqualTo(false));
+        }
     }
 }
