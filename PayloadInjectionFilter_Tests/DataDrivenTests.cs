@@ -22,7 +22,7 @@ namespace PayloadInjectionFilter_Tests
         [Test]
         public void FailsAppointmentSettingsModelThatContainsBadData()
         {
-            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\appointmentSettings.json";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "appointmentSettings.json");
             var datum = File.ReadAllText(path, Encoding.UTF8);
 
             var deserializedDatum = System.Text.Json.JsonSerializer.Deserialize<ServiceAppointmentSetting>(datum, new JsonSerializerOptions
@@ -66,11 +66,11 @@ namespace PayloadInjectionFilter_Tests
             Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(400));
         }
 
-
         [Test]
         public void FailsLobbyEntryModelThatContainsBadData()
         {
-            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\lobbyEntry.json";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "lobbyEntry.json");
+
             var datum = File.ReadAllText(path, Encoding.UTF8);
 
             var deserializedDatum = System.Text.Json.JsonSerializer.Deserialize<LobbyCheckInDto>(datum);
@@ -114,7 +114,8 @@ namespace PayloadInjectionFilter_Tests
         [Test]
         public void FailsLocationHolidayDetailsModelThatContainsBadData()
         {
-            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\locationHolidayDetail.json";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "locationHolidayDetail.json");
+
             var datum = File.ReadAllText(path, Encoding.UTF8);
 
             var deserializedDatum = JsonConvert.DeserializeObject<LocationHolidayDetail>(datum);
@@ -159,7 +160,7 @@ namespace PayloadInjectionFilter_Tests
         [Test]
         public void FailsSortOrderViewModelThatContainsBadData()
         {
-            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\sortOrder.json";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "sortOrder.json");
             var datum = File.ReadAllText(path, Encoding.UTF8);
 
             var deserializedDatum = JsonConvert.DeserializeObject<SortOrderViewModel>(datum);
@@ -204,7 +205,7 @@ namespace PayloadInjectionFilter_Tests
         [Test]
         public void FailsListOfUserSkillsThatContainsBadData()
         {
-            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\userSkills.json";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "userSkills.json");
             var datum = File.ReadAllText(path, Encoding.UTF8);
 
             var deserializedDatum = JsonConvert.DeserializeObject<List<UserService>>(datum);
@@ -249,7 +250,7 @@ namespace PayloadInjectionFilter_Tests
         [Test]
         public void ComplexCustomTypeShouldNotFailDuringRecursion()
         {
-            string path = $"{Directory.GetCurrentDirectory()}\\TestData\\detailsViewCharDataRequests.json";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "detailsViewCharDataRequests.json");
             var datum = File.ReadAllText(path, Encoding.UTF8);
 
             var deserializedDatum = JsonConvert.DeserializeObject<DetailsViewChartDataRequest>(datum);
