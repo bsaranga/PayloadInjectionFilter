@@ -3,17 +3,20 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PayloadInjectionFilter", "PayloadInjectionFilter\PayloadInjectionFilter.csproj", "{7351866B-C6D7-4002-9495-7152934C6032}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PayloadInjectionFilter", "PayloadInjectionFilter\PayloadInjectionFilter.csproj", "{7351866B-C6D7-4002-9495-7152934C6032}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PayloadInjectionFilter_Tests", "PayloadInjectionFilter_Tests\PayloadInjectionFilter_Tests.csproj", "{AF641534-EB22-41EC-9B6B-79164CB97E53}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PayloadInjectionFilter_Tests", "PayloadInjectionFilter_Tests\PayloadInjectionFilter_Tests.csproj", "{AF641534-EB22-41EC-9B6B-79164CB97E53}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestAPI", "TestAPI\TestAPI.csproj", "{B2809E73-9B8F-4C70-9F3A-96C2E50C9457}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IntegrationTests", "IntegrationTests\IntegrationTests.csproj", "{1D561842-914D-4862-86CE-52E430F6A100}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestModels", "TestModels\TestModels.csproj", "{A9F1A102-15E8-4EA8-B60A-AB6C19C74C17}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{7351866B-C6D7-4002-9495-7152934C6032}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -24,5 +27,23 @@ Global
 		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AF641534-EB22-41EC-9B6B-79164CB97E53}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2809E73-9B8F-4C70-9F3A-96C2E50C9457}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2809E73-9B8F-4C70-9F3A-96C2E50C9457}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2809E73-9B8F-4C70-9F3A-96C2E50C9457}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2809E73-9B8F-4C70-9F3A-96C2E50C9457}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D561842-914D-4862-86CE-52E430F6A100}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D561842-914D-4862-86CE-52E430F6A100}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D561842-914D-4862-86CE-52E430F6A100}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D561842-914D-4862-86CE-52E430F6A100}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9F1A102-15E8-4EA8-B60A-AB6C19C74C17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9F1A102-15E8-4EA8-B60A-AB6C19C74C17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9F1A102-15E8-4EA8-B60A-AB6C19C74C17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9F1A102-15E8-4EA8-B60A-AB6C19C74C17}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {23736B47-A9AA-42BA-9084-A5BEA6F47ACF}
 	EndGlobalSection
 EndGlobal
