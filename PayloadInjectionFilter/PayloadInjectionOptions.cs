@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace Zone24x7PayloadExtensionFilter
+namespace SpitFirePayloadExtensionFilter
 {
     /// <summary>
     /// Set fine-tuning options for the payload filter

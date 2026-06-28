@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Zone24x7PayloadExtensionFilter;
+using SpitFirePayloadExtensionFilter;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -786,6 +786,122 @@ namespace PayloadInjectionFilter_Tests
             Assert.IsFalse(sanitizationFilter.HasShortCircuited);
             Assert.IsTrue(sanitizationFilter.RecursionDepthHasExceeded);
             Assert.That((sanitizationFilter.GetCurrentContext().Result as ContentResult).StatusCode, Is.EqualTo(413));
+        }
+
+        [TestCase("POST")]
+        public void Does_Not_Throw_On_Null_Argument_Value(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            // An optional / unbound parameter surfaces as a null action argument value.
+            var bodyWithNull = new Dictionary<string, object>
+            {
+                { "optionalModel", null }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor { ControllerName = "Service" };
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), bodyWithNull, null);
+
+            Assert.DoesNotThrow(() => sanitizationFilter.OnActionExecuting(actionExecutingContext));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.False);
+        }
+
+        [TestCase("POST")]
+        public void Terminates_On_Cyclic_Object_Graph(string httpMethod)
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]")
+                // MaxRecursionDepth left at the default (-1 / infinite) on purpose.
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = httpMethod;
+
+            // Build a reference cycle: a -> b -> a
+            var a = new RecursiveType { Text1 = "safe", Text2 = "safe" };
+            var b = new RecursiveType { Text1 = "<unsafe/>", Text2 = "safe", Nested = a };
+            a.Nested = b;
+
+            var cyclicBody = new Dictionary<string, object> { { "cyclic", a } };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor { ControllerName = "Service" };
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), cyclicBody, null);
+
+            // Without cycle detection this would StackOverflow with infinite recursion depth.
+            Assert.DoesNotThrow(() => sanitizationFilter.OnActionExecuting(actionExecutingContext));
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.True);
+        }
+
+        [Test]
+        public void Applies_ExclusionPattern_To_Whitelisted_Property()
+        {
+            var mockLogger = new Mock<ILogger<PayloadInjectionFilter>>();
+            var mockOptions = new Mock<IOptions<PayloadInjectionOptions>>();
+
+            mockOptions.Setup(x => x.Value).Returns(new PayloadInjectionOptions
+            {
+                AllowedHttpMethods = new List<HttpMethod> { HttpMethod.Put, HttpMethod.Post, HttpMethod.Patch },
+                Pattern = new Regex(@"[<>\&;]"),
+                WhiteListEntries = new List<WhiteListEntry>
+                {
+                    new WhiteListEntry
+                    {
+                        PathTemplate = "appointmentSettings/{id}",
+                        ParameterName = "legitimateRichText",
+                        PropertyNames = new List<string> { nameof(LegitimateRichText.AllowedRichText) },
+                        // Even within a white-listed field, <script> tags remain disallowed.
+                        ExclusionPattern = new Regex(@"<script", RegexOptions.IgnoreCase)
+                    }
+                }
+            });
+
+            var sanitizationFilter = new PayloadInjectionFilter(mockOptions.Object, mockLogger.Object);
+            var defaultHttpContext = new DefaultHttpContext();
+            defaultHttpContext.Request.Method = "PUT";
+
+            var body = new Dictionary<string, object>
+            {
+                {
+                    "legitimateRichText",
+                    new LegitimateRichText
+                    {
+                        ModelId = 1,
+                        AllowedRichText = "<p>fine</p><script>alert(1)</script>"
+                    }
+                }
+            };
+
+            var ctrlActionDescriptor = new ControllerActionDescriptor
+            {
+                ControllerName = "Service",
+                AttributeRouteInfo = new AttributeRouteInfo { Template = "appointmentSettings/{id}" }
+            };
+
+            var actionContext = new ActionContext(defaultHttpContext, new RouteData(), ctrlActionDescriptor, new ModelStateDictionary());
+            var actionExecutingContext = new ActionExecutingContext(actionContext, new List<IFilterMetadata>(), body, null);
+
+            sanitizationFilter.OnActionExecuting(actionExecutingContext);
+
+            Assert.That(sanitizationFilter.HasShortCircuited, Is.True);
         }
 
         [TestCase("PATCH")]
