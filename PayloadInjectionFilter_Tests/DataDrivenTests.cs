@@ -10,7 +10,7 @@ using PayloadInjectionFilter_Tests.CustomTypes;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Zone24x7PayloadExtensionFilter;
+using SpitFirePayloadExtensionFilter;
 using Microsoft.AspNetCore.Routing;
 using Newtonsoft.Json;
 

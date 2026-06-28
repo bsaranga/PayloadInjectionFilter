@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Routing;
 using PayloadInjectionFilter_Tests.CustomTypes;
-using Zone24x7PayloadExtensionFilter.HelperExtensions;
+using SpitFirePayloadExtensionFilter.HelperExtensions;
 
 namespace PayloadInjectionFilter_Tests
 {

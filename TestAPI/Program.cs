@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using Zone24x7PayloadExtensionFilter;
+using SpitFirePayloadExtensionFilter;
 
 namespace TestAPI
 {

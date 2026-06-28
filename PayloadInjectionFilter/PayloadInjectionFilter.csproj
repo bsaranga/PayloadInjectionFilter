@@ -3,10 +3,10 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-	<PackageId>Zone24x7.PayloadInjectionFilter</PackageId>
-	<Version>0.0.9</Version>
+	<PackageId>SpitFire.PayloadInjectionFilter</PackageId>
+	<Version>0.1.0</Version>
 	<Authors>Buwaneka Saranga</Authors>
-	<Company>Zone24x7 Inc.</Company>
+	<Company>SpitFire Inc.</Company>
 	<Product>PayloadInjectionFilter For ASPNET Core</Product>
 	<Description>
 		A reusable payload injection filter for ASP.NET Core. This can be used to short-circuit a request if it contains any malicious content as specified via a regex pattern.

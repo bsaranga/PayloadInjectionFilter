@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace Zone24x7PayloadExtensionFilter
+namespace SpitFirePayloadExtensionFilter
 {
     /// <summary>
     /// Contains payload injection filter extensible methods

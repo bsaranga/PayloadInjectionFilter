@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace Zone24x7PayloadExtensionFilter.HelperExtensions
+namespace SpitFirePayloadExtensionFilter.HelperExtensions
 {
     public static class HelperExtensions
     {
