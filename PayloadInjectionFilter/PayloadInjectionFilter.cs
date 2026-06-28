@@ -5,10 +5,10 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Options;
 using System.Collections;
-using Zone24x7PayloadExtensionFilter.HelperExtensions;
+using SpitFirePayloadExtensionFilter.HelperExtensions;
 using System.Net;
 
-namespace Zone24x7PayloadExtensionFilter
+namespace SpitFirePayloadExtensionFilter
 {
     /// <summary>
     /// This filter intercepts the requests before it
@@ -28,6 +28,13 @@ namespace Zone24x7PayloadExtensionFilter
         private int CurrentRecursionDepth;
         private List<string> CaughtMaliciousContent;
         private ActionExecutingContext CurrentContext;
+
+        /// <summary>
+        /// Tracks the reference-type instances on the current traversal path so that
+        /// cyclic object graphs (e.g. A -> B -> A) do not cause infinite recursion.
+        /// Reference equality is used so that distinct sibling instances are not skipped.
+        /// </summary>
+        private readonly HashSet<object> VisitedOnPath = new HashSet<object>(ReferenceEqualityComparer.Instance);
 
         private readonly ILogger<PayloadInjectionFilter> logger;
         private readonly IOptions<PayloadInjectionOptions> options;
@@ -89,9 +96,14 @@ namespace Zone24x7PayloadExtensionFilter
 
                 if (hasWhiteListedEntries)
                 {
-                    pathTemplate = context.ActionDescriptor.AttributeRouteInfo.Template;
-                    templateMatch = options.Value.WhiteListEntries.Select(w => w.PathTemplate).Contains(pathTemplate);
-                    whiteListIndex = (templateMatch) ? options.Value.WhiteListEntries.Select(w => w.PathTemplate).ToList().IndexOf(pathTemplate) : -1;
+                    // AttributeRouteInfo is null for convention-routed controllers; guard against it.
+                    pathTemplate = context.ActionDescriptor.AttributeRouteInfo?.Template;
+
+                    if (pathTemplate != null)
+                    {
+                        templateMatch = options.Value.WhiteListEntries.Select(w => w.PathTemplate).Contains(pathTemplate);
+                        whiteListIndex = (templateMatch) ? options.Value.WhiteListEntries.Select(w => w.PathTemplate).ToList().IndexOf(pathTemplate) : -1;
+                    }
                 }
 
                 if (context.IsOneOfAllowedHttpMethods(options.Value.AllowedHttpMethods!.Select(x => x.ToString()).Distinct().ToArray()))
@@ -100,12 +112,15 @@ namespace Zone24x7PayloadExtensionFilter
 
                     foreach (var argument in context.ActionArguments)
                     {
+                        // A nullable/optional bound parameter can be null; skip it instead of throwing.
+                        if (argument.Value == null) continue;
+
                         if (hasWhiteListedEntries && whiteListIndex != -1)
                         {
                             parameterMatch = options.Value.WhiteListEntries[whiteListIndex].ParameterName.Equals(argument.Key);
                             whiteListInitialCondition = parameterMatch && templateMatch;
                         }
-                        
+
                         var argumentType = argument.Value.GetType();
 
                         if (argumentType.IsString())
@@ -118,6 +133,7 @@ namespace Zone24x7PayloadExtensionFilter
                         {
                             foreach (var listItem in (argument.Value as IEnumerable)!)
                             {
+                                if (listItem == null) continue;
                                 Evaluate(listItem.GetType(), listItem, context, whiteListIndex, whiteListInitialCondition, ref PLACE_HOLDER_RECURSION_DEPTH);
                             }
                         }
@@ -142,39 +158,74 @@ namespace Zone24x7PayloadExtensionFilter
             {
                 if (arg != null && (!argType.IsValueType || argType.IsKeyValuePair()))
                 {
-                    IEnumerable<PropertyInfo> properties = argType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                    // Cycle guard: if this exact instance is already on the current traversal
+                    // path, recursing again would loop forever. Track it for the duration of
+                    // this subtree and remove it on the way out so siblings are still scanned.
+                    bool tracked = !argType.IsValueType && VisitedOnPath.Add(arg);
+                    if (!tracked && !argType.IsValueType) return;
 
-                    if (properties.Any())
+                    try
                     {
+                        PropertyInfo[] properties = GetCachedProperties(argType);
+
                         foreach (var prop in properties)
                         {
                             isWhiteListedProperty = whiteListIndex != -1 && options.Value.WhiteListEntries[whiteListIndex].PropertyNames.Contains(prop.Name);
 
                             if (prop.IsString() && !(initialWhiteListCondition && isWhiteListedProperty))
                             {
-                                if (DetectDisallowedChars(prop.GetValue(arg) as string, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
+                                var value = prop.GetValue(arg) as string;
+                                if (DetectDisallowedChars(value, options.Value.Pattern ?? DEFAULT_FILTER_PATTERN))
                                 {
-                                    ShortCircuit(context, prop.GetValue(arg) as string);
+                                    ShortCircuit(context, value);
+                                }
+                            }
+                            else if (prop.IsString() && initialWhiteListCondition && isWhiteListedProperty
+                                     && whiteListIndex != -1 && options.Value.WhiteListEntries[whiteListIndex].ExclusionPattern != null)
+                            {
+                                // The property is white-listed, but an ExclusionPattern is configured:
+                                // still short-circuit if the (otherwise allowed) value matches it.
+                                var value = prop.GetValue(arg) as string;
+                                if (DetectDisallowedChars(value, options.Value.WhiteListEntries[whiteListIndex].ExclusionPattern))
+                                {
+                                    ShortCircuit(context, value);
                                 }
                             }
                             else if (!prop.PropertyType.IsValueType)
                             {
+                                var value = prop.GetValue(arg);
+                                if (value == null) continue;
+
                                 if (prop.PropertyType.IsEnumerable())
                                 {
-                                    if (prop.GetValue(arg) != null)
+                                    foreach (var item in (value as IEnumerable))
                                     {
-                                        foreach (var item in (prop.GetValue(arg) as IEnumerable))
-                                            Evaluate(item.GetType(), item, context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
+                                        if (item == null) continue;
+                                        Evaluate(item.GetType(), item, context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
                                     }
                                 }
-                                else Evaluate(prop.PropertyType, prop.GetValue(arg), context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
+                                else Evaluate(prop.PropertyType, value, context, whiteListIndex, initialWhiteListCondition, ref CurrentRecursionDepth);
                             }
                         }
+                    }
+                    finally
+                    {
+                        if (tracked) VisitedOnPath.Remove(arg);
                     }
                 }
             }
             else RecursionDepthExceeded(context);
         }
+
+        /// <summary>
+        /// Caches the public instance properties per <see cref="Type"/> so the reflection
+        /// metadata lookup is performed only once per type rather than on every request.
+        /// </summary>
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, PropertyInfo[]> PropertyCache
+            = new System.Collections.Concurrent.ConcurrentDictionary<Type, PropertyInfo[]>();
+
+        private static PropertyInfo[] GetCachedProperties(Type type)
+            => PropertyCache.GetOrAdd(type, t => t.GetProperties(BindingFlags.Public | BindingFlags.Instance));
 
         private bool DetectDisallowedChars(string input, Regex disallowedPattern)
         {
