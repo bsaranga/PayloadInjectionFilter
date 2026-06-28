@@ -6,8 +6,12 @@
 #   Repository Owner: bsaranga
 #   Repository:       PayloadInjectionFilter
 #   Workflow File:    dotnet-publish.yml
+#   Environment:      release   (optional, but recommended; must match the
+#                                job-level `environment: release` below)
 # and add a repository secret NUGET_USER set to your nuget.org username (the
-# profile name, NOT your email address).
+# profile name, NOT your email address). The `release` environment can also
+# be configured in GitHub (Settings -> Environments) with required reviewers
+# so a publish must be manually approved.
 
 name: Nuget Package Publish Workflow
 
@@ -19,6 +23,7 @@ jobs:
   build-and-publish:
 
     runs-on: ubuntu-latest
+    environment: release
 
     permissions:
       id-token: write   # required for GitHub to issue the OIDC token
